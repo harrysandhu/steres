@@ -5,7 +5,7 @@ Steres is a fast linked tokenized key value store for sequences, with support fo
 
 It relies on LevelDB for indexing and filesystem for storage. Uses nginx as the volume server.
 
-Its persistent, and does O(k) read/write. 
+Its persistent, and does O(1) read/write. 
 Given a sequence with some probablity of noise/error on
 the character level, and word/sentence level, it tokenizes 
 the sequence as per the given token size, maps that "token +/- error" to 
@@ -13,10 +13,10 @@ an identifier(id) for this sequence while linking all tokens of that identifier.
 
 
 Basically,
-
+```
 (text, token_size, threshold)   => [Steres]  => (text, id) 
-
-
+```
+where, threshold is the minimum ratio of the "hypothesis(input) sequence" to the "stored sequence".
 
 ## API
 
