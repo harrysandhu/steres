@@ -16,7 +16,7 @@ type App struct {
 
 func (a *App) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(200)
-	res.Write([]byte("hello, world"))
+	res.Write([]byte("hello, worldy"))
 	return
 }
 
@@ -24,7 +24,7 @@ func main() {
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
 	rand.Seed(time.Now().Unix())
 	port := flag.Int("port", 8000, "Port for the master server.")
-	dbPath := flag.String("db", "", "Path to leveldb")
+	dbPath := flag.String("db", ".", "Path to leveldb")
 	flag.Parse()
 
 	cmd := flag.Arg(0)
@@ -33,9 +33,13 @@ func main() {
 		flag.PrintDefaults()
 		return
 	}
-
+	db, err := leveldb.OpenFile(*dbPath, nil)
+	if err != nil {
+		panic(fmt.Sprintf("LevelDB open failed: %s", err))
+	}
+	defer db.Close()
 	app := App{
-		db: dbPath,
+		db: db,
 	}
 	if cmd == "serve" {
 		http.ListenAndServe(fmt.Sprintf(":%d", *port), &app)
