@@ -22,13 +22,16 @@ WORKDIR /
 ENV GOPATH /go
 ENV PATH ${PATH}:/steres
 
-COPY requirements.txt steres/requirements.txt
-RUN pip3 install --no-cache-dir -r steres/requirements.txt
+# COPY requirements.txt steres/requirements.txt
+# RUN pip3 install --no-cache-dir -r steres/requirements.txt
 
 COPY steres volume steres/
 COPY src/*.go steres/src/
-COPY tools/* steres/tools/
+# COPY tools/* steres/tools/
 # steres is cool
 WORKDIR /steres
+RUN go mod init github.com/harrysandhu/steres
 
 
+# docker build -t steres .
+# docker run -p 8000:8000 -v /Users/harrysandhu/go/src/steres/:/steres/ -it steres
