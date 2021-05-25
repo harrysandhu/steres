@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -12,7 +13,6 @@ App struct maintains a central state for
 the server
 **/
 type App struct {
-	tokenNodes    map[string][]Node
 	db            *leveldb.DB
 	mutexLock     sync.Mutex
 	lock          map[string]struct{}
@@ -24,6 +24,7 @@ type App struct {
 	md5sum        bool
 	volumeTimeout time.Duration
 	tokenSize     int
+	threshold     float64
 }
 
 /*
@@ -73,4 +74,56 @@ func (a *App) UnlockSequence(key []byte) {
 		delete(a.lock, value)
 	}
 	a.mutexLock.Unlock()
+}
+
+/**
+
+	task - insert the sequence in the right place
+
+				  < this computation occurs on RAM >
+	get sequence : [build tokenNodes : resulting id] : put sequence
+
+
+**/
+func (a *App) GetSequence(key []byte) (map[string]Node, map[string]int) {
+	tokenNodes := make(map[string]Node)
+	countTable := make(map[string]int)
+	tokens := NSplit(key, a.tokenSize)
+	t, _ := uuid.NewUUID()
+	id := t.String()
+	for index, token := range tokens {
+		data, err := a.db.Get([]byte(token), nil)
+		// can we hash this?
+		//tmp node
+		n := Node{nvolumes: []string{}, deleted: HARD, current: token, id: id, next: getNext(&tokens, index), prev: getPrev(&tokens, index)}
+		if err != leveldb.ErrNotFound {
+			// byte arr -> Nodes wrapper
+			var nodes Nodes = toNodes(data)
+
+			// which one of them have next as diff(getNext)
+			for _, nodeObj := range nodes.L {
+				tmpnode := nodeFromMap(nodeObj)
+
+				if nodePassesThreshold(n, tmpnode, a.threshold) {
+					n = tmpnode
+					id = tmpnode.id
+					break
+				}
+			}
+		}
+		tokenNodes[token] = n
+		// tokenNodes[dbToken] = append(tokenNodes[dbToken], n)
+		countTable[id] += 1
+	}
+	// winId := id
+	// maxCount := 0
+	// for id, count := range countTable {
+	// 	if count > maxCount {
+	// 		maxCount = count
+	// 		winId = id
+	// 	}
+	// }
+
+	return tokenNodes, countTable
+
 }
