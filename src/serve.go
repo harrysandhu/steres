@@ -145,4 +145,65 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// 201, all good
 		w.WriteHeader(201)
+	case "DELETE", "UNLINK":
+		unlink := r.Method == "UNLINK"
+
+		// delete the key, first locally
+		rec := a.GetSequence(key)
+		if rec.deleted == HARD || (unlink && rec.deleted == SOFT) {
+			w.WriteHeader(404)
+			return
+		}
+
+		if !unlink && a.protect && rec.deleted == NO {
+			w.WriteHeader(403)
+			return
+		}
+
+		// mark as deleted
+		if !a.GetSequence(key, Sequence{rec.rvolumes, SOFT, rec.hash}) {
+			w.WriteHeader(500)
+			return
+		}
+
+		if !unlink {
+			// then remotely, if this is not an unlink
+			delete_error := false
+			for _, volume := range rec.rvolumes {
+				remote := fmt.Sprintf("http://%s%s", volume, key2path(key))
+				if remote_delete(remote) != nil {
+					// if this fails, it's possible to get an orphan file
+					// but i'm not really sure what else to do?
+					delete_error = true
+				}
+			}
+
+			if delete_error {
+				w.WriteHeader(500)
+				return
+			}
+
+			// this is a hard delete in the database, aka nothing
+			a.db.Delete(key, nil)
+		}
+
+		// 204, all good
+		w.WriteHeader(204)
+	case "REBALANCE":
+		rec := a.GetSequence(key)
+		if rec.deleted != NO {
+			w.WriteHeader(404)
+			return
+		}
+
+		kvolumes := key2volume(key, a.volumes, a.replicas, a.subvolumes)
+		rbreq := RebalanceRequest{key: key, volumes: rec.rvolumes, kvolumes: kvolumes}
+		if !rebalance(a, rbreq) {
+			w.WriteHeader(400)
+			return
+		}
+
+		// 204, all good
+		w.WriteHeader(204)
 	}
+}
