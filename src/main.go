@@ -24,6 +24,7 @@ func main() {
 	md5sum := flag.Bool("md5sum", true, "Calculate and store MD5 checksum of values")
 	voltimeout := flag.Duration("voltimeout", 1*time.Second, "Volume servers must respond to GET/HEAD requests in this amount of time or they are considered down, as duration")
 	tokenSize := flag.Int("tokensize", 5, "Token size for the sequence. (default 5)")
+	threshold := flag.Float64("threshold", .9, "Threshold is the ratio of similarity - should be between .4 and 1 (default 0.9)")
 
 	flag.Parse()
 	volumes := strings.Split(*volumesStr, ",")
@@ -40,6 +41,9 @@ func main() {
 		panic("Invalid path for the database")
 	}
 
+	if *threshold < 0.4 && *threshold > 1 {
+		panic("Threshold is the ratio of similarity - should be between .4 and 1")
+	}
 	if *tokenSize < 1 && *tokenSize > 20 {
 		panic("Token size is invalid (1-20)")
 	}
@@ -64,6 +68,7 @@ func main() {
 		md5sum:        *md5sum,
 		volumeTimeout: *voltimeout,
 		tokenSize:     *tokenSize,
+		threshold:     *threshold,
 	}
 	if cmd == "serve" {
 		http.ListenAndServe(fmt.Sprintf(":%d", *port), &app)
