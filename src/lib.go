@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"sort"
+	"time"
 )
 
 // hash functions
@@ -109,4 +113,35 @@ func remote_put(remote string, length int64, body io.Reader) error {
 		return fmt.Errorf("remote_put: wrong status code %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func remote_get(remote string) (string, error) {
+	resp, err := http.Get(remote)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", errors.New(fmt.Sprintf("remote_get: wrong status code %d", resp.StatusCode))
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+func remote_head(remote string, timeout time.Duration) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "HEAD", remote, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == 200, nil
 }
