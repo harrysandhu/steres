@@ -63,3 +63,15 @@ func key2volume(key []byte, volumes []string, count int, svcount int) []string {
 	//fmt.Println(string(key), ret[0])
 	return ret
 }
+
+func needs_rebalance(volumes []string, nvolumes []string) bool {
+	if len(volumes) != len(nvolumes) {
+		return true
+	}
+	for i := 0; i < len(volumes); i++ {
+		if volumes[i] != nvolumes[i] {
+			return true
+		}
+	}
+	return false
+}
