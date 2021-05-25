@@ -1,4 +1,6 @@
 #!/bin/bash -e
+go get github.com/google/uuid
 go get github.com/syndtr/goleveldb/leveldb
-go build src/*.go
-./main $@
+go build src/*.go 
+./app $@
+
