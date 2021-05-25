@@ -88,5 +88,61 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", remote)
 		w.Header().Set("Content-Length", "0")
 		w.WriteHeader(302)
+	case "PUT":
+		// no empty values
+		if r.ContentLength == 0 {
+			w.WriteHeader(411)
+			return
+		}
 
-}
+		// check if we already have the key, and it's not deleted
+		rec := a.GetSequence(key)
+		if rec.deleted == NO {
+			// Forbidden to overwrite with PUT
+			w.WriteHeader(403)
+			return
+		}
+
+		// we don't have the key, compute the remote URL
+		kvolumes := key2volume(key, a.volumes, a.replicas, a.subvolumes)
+
+		// push to leveldb initially as deleted, and without a hash since we don't have it yet
+		if !a.PutSequence(key, Node{kvolumes, SOFT, ""}) {
+			w.WriteHeader(500)
+			return
+		}
+
+		// write to each replica
+		var buf bytes.Buffer
+		body := io.TeeReader(r.Body, &buf)
+		bodylen := r.ContentLength
+		for i := 0; i < len(kvolumes); i++ {
+			if i != 0 {
+				// if we have already read the contents into the TeeReader
+				body = bytes.NewReader(buf.Bytes())
+			}
+			remote := fmt.Sprintf("http://%s%s", kvolumes[i], key2path(key))
+			if remote_put(remote, bodylen, body) != nil {
+				// we assume the remote wrote nothing if it failed
+				fmt.Printf("replica %d write failed: %s\n", i, remote)
+				w.WriteHeader(500)
+				return
+			}
+		}
+
+		var hash = ""
+		if a.md5sum {
+			// compute the hash of the value
+			hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
+		}
+
+		// push to leveldb as existing
+		// note that the key is locked, so nobody wrote to the leveldb
+		if !a.Sequence(key, Sequence{kvolumes, NO, hash}) {
+			w.WriteHeader(500)
+			return
+		}
+
+		// 201, all good
+		w.WriteHeader(201)
+	}
