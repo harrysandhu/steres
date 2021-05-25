@@ -1,7 +1,10 @@
 
 # Steres
 
-Steres is a fast linked tokenized key value store for sequences, with support for replication, multiple machines and multiple drives per machine.
+! In development... 
+
+
+Steres is a linked tokenized key value store for sequences, with support for replication, multiple machines and multiple drives per machine.
 
 It relies on LevelDB for indexing and filesystem for storage. Uses nginx as the volume server.
 
