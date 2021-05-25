@@ -20,11 +20,29 @@ where, threshold is the minimum ratio of the "hypothesis(input) sequence" to the
 
 ## API
 
-- GET /text/token_size/threshold
+
+- POST /
+    data : {
+        sequence: "...... .. .. .. .",   (the sequence that you are searching for)
+        threshold: 0.94,                 (Similarity threshold ratio, which accounts for noise/error.)
+        token_size: 8                    (Depending upon your application of this db)  
+    }
     - 302 redirect to nginx volume server
+    - returns { id } ( id of the sequence }
 
-- PUT /text/token_size/threshold
-    - 201 = written. 
+- PUT /
+     data : {
+        sequence: "...... .. .. .. .",   (the sequence that you are searching for)
+        threshold: 0.94,                 (Similarity threshold ratio, which accounts for noise/error.)
+        token_size: 8                    (Depending upon your application of this db)  
+    }
+    - 201 = written/updated 
+    - id -> if the sequence is unique (no match) it gets a new id, else return the recognized sequence's id
 
-- DELETE /text/token_size/threshold
-     - 201 = written. 
+
+- DELETE /id
+    - Blocks. and if 204 => deleted
+    - deletes the entire sequence for the id.
+    
+
+
