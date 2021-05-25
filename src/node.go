@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"strings"
+
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 const NULL = "\\0\\"
@@ -49,7 +51,7 @@ func toNodes(data []byte) Nodes {
 	nodes := Nodes{L: make([]map[string]string, 0)}
 
 	if err := dec.Decode(&nodes); err != nil {
-		panic("error: cannot convert nodes into bytes")
+		panic("error: cannot convert bytes into nodes")
 	}
 	return nodes
 }
@@ -63,9 +65,39 @@ func fromNodes(nodes Nodes) []byte {
 	return buf.Bytes()
 }
 
+func nodeFromMap(nm map[string]string) Node {
+	var node Node
+	node.nvolumes = strings.Split(nm["nvolumes"], ",")
+	node.deleted = NO
+	node.current = nm["current"]
+	node.id = nm["id"]
+	node.next = nm["next"]
+	node.prev = nm["prev"]
+
+	return node
+}
+
+func nodePassesThreshold(n1 Node, n2 Node, threshold float64) bool {
+
+	if n1.prev != NULL && n2.prev != NULL {
+		seq := difflib.NewMatcher(strings.Split(n1.prev, ""), strings.Split(n2.prev, ""))
+		if seq.Ratio() >= threshold {
+			return false
+		}
+	}
+	if n1.next != NULL && n2.next != NULL {
+		seq := difflib.NewMatcher(strings.Split(n1.next, ""), strings.Split(n2.next, ""))
+		if seq.Ratio() <= threshold {
+			return false
+		}
+	}
+
+	return true
+}
+
 func NSplit(seq []byte, size int) []string {
-	sep := " "
 	s := string(seq)
+	sep := " "
 	tks := strings.Split(s, sep)
 	tokenizedSequence := []string{}
 	for i := 0; i < len(tks); i++ {
@@ -162,3 +194,5 @@ func NSplit(seq []byte, size int) []string {
 // 	fmt.Println(xstr)
 
 // }
+
+// *** Remote Access Functions ***
